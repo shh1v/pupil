@@ -150,31 +150,26 @@ class Msg_Streamer(ZMQ_Socket):
         self.socket.connect(url)
 
     def send(self, payload, deprecated=()):
-        """Send a message with topic, payload
-
-        Topic is a unicode string. It will be sent as utf-8 encoded byte array.
-        Payload is a python dict. It will be sent as a msgpack serialized dict.
-
-        If payload has the key '__raw_data__'
-        we pop if of the payload and send its raw contents as extra frames
-        everything else need to be serializable
-        the contents of the iterable in '__raw_data__'
-        require exposing the pyhton memoryview interface.
-        """
         assert deprecated == (), "Depracted use of send()"
         assert "topic" in payload, f"`topic` field required in {payload}"
 
-        if "__raw_data__" not in payload:
-            # IMPORTANT: serialize first! Else if there is an exception
-            # the next message will have an extra prepended frame
-            serialized_payload = serializer.packb(payload, use_bin_type=True)
-            self.socket.send_string(payload["topic"], flags=zmq.SNDMORE)
+        # Create a shallow copy of payload
+        payload_copy = payload.copy()
+
+        extra_frames = payload_copy.pop("__raw_data__", None)
+        
+        # Convert all values in the payload_copy to strings only if the topic is "surface"
+        if "surface" in payload_copy.get("topic", ""):
+            payload_copy = {key: str(value) for key, value in payload_copy.items()}
+
+        if extra_frames is None:  
+            serialized_payload = serializer.packb(payload_copy, use_bin_type=True)
+            self.socket.send_string(payload_copy["topic"], flags=zmq.SNDMORE)
             self.socket.send(serialized_payload)
         else:
-            extra_frames = payload.pop("__raw_data__")
-            assert isinstance(extra_frames, (list, tuple))
-            self.socket.send_string(payload["topic"], flags=zmq.SNDMORE)
-            serialized_payload = serializer.packb(payload, use_bin_type=True)
+            assert isinstance(extra_frames, (list, tuple)) 
+            self.socket.send_string(payload_copy["topic"], flags=zmq.SNDMORE)
+            serialized_payload = serializer.packb(payload_copy, use_bin_type=True)
             self.socket.send(serialized_payload, flags=zmq.SNDMORE)
             for frame in extra_frames[:-1]:
                 self.socket.send(frame, flags=zmq.SNDMORE, copy=True)
