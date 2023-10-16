@@ -159,7 +159,7 @@ class Msg_Streamer(ZMQ_Socket):
         extra_frames = payload_copy.pop("__raw_data__", None)
         
         # Convert all values in the payload_copy to strings only if the topic is "surface"
-        if "surface" in payload_copy.get("topic", ""):
+        if "surfaces.HUD" in payload_copy.get("topic", ""):
             payload_copy = {key: str(value) for key, value in payload_copy.items()}
 
         if extra_frames is None:  
