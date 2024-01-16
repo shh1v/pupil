@@ -164,7 +164,7 @@ class Msg_Streamer(ZMQ_Socket):
 
         if extra_frames is None:  
             serialized_payload = serializer.packb(payload_copy, use_bin_type=True)
-            self.socket.send_string(payload_copy["topic"], flags=zmq.SNDMORE)
+            # self.socket.send_string(payload_copy["topic"], flags=zmq.SNDMORE)
             self.socket.send(serialized_payload)
         else:
             assert isinstance(extra_frames, (list, tuple)) 
